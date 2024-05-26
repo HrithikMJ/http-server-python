@@ -1,0 +1,21 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+fastapi = "*"
+aiohttp = "*"
+uvloop = "*"
+requests = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"
+python_full_version = "3.11.8"
+
+[scripts]
+dev = "fastapi dev main.py"
+test = "python3 test.py"
+testMulti = "python3 multiProc.py"
