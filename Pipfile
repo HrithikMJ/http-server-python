@@ -8,6 +8,7 @@ fastapi = "*"
 aiohttp = "*"
 uvloop = "*"
 requests = "*"
+uvicorn = "*"
 
 [dev-packages]
 
@@ -17,5 +18,7 @@ python_full_version = "3.11.8"
 
 [scripts]
 dev = "fastapi dev main.py"
+prod = "fastapi run main.py --workers 3"
 test = "python3 test.py"
 testMulti = "python3 multiProc.py"
+testMultiQ = "python3 multiProcQ.py"

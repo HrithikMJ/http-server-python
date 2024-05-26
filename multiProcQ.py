@@ -1,5 +1,6 @@
 import time
-from multiprocessing import Pool, Manager
+from multiprocessing import Pool
+import multiprocessing
 import requests
 import asyncio, aiohttp, concurrent.futures
 from datetime import datetime
@@ -15,14 +16,15 @@ import uvloop
 #     end_time = time.time()
 #     elapsed_time = end_time - start_time
 
-
+mpQ = multiprocessing.Queue()
 class UVloopTester():
-    def __init__(self):
+    def __init__(self,i):
         self.timeout = 10
-        self.threads = 500
+        self.threads = 1200
         self.totalTime = 0
         self.totalRequests = 0
         self.count = 0
+        self.i = i
 
     @staticmethod
     def timestamp():
@@ -30,9 +32,24 @@ class UVloopTester():
 
     async def getCheck(self):
         async with aiohttp.ClientSession() as session:
-            async with session.get('http://127.0.0.1:8000/1', timeout=self.timeout) as response:
-                await response.read()
+            match self.i:
+                case 1:
+                    url = 'http://127.0.0.1:8000/1'
+                case 2:
+                    url = 'http://127.0.0.1:8000/2'
+                case 3:
+                    url = 'http://127.0.0.1:8000/3'
+                    
+            try :
+                async with session.get(url, timeout=self.timeout) as response:
+                    await response.read()
+            except Exception as e:
+                raise concurrent.futures._base.TimeoutError()
             return True
+
+    async def multiProcQConsumer(self):
+        if mpQ.qsize > 0:
+            print(mpQ.get())
 
     async def testRun(self, id):
         now = datetime.now()
@@ -47,6 +64,12 @@ class UVloopTester():
             # print(f'{self.timestamp()} Request {id} timed out')
 
     async def main(self):
+        # await asyncio.run_coroutine_threadsafe(self.multiProcQConsumer)
+        # async with asyncio.TaskGroup() as tg:
+        #     for x in range(self.threads):
+        #         await tg.create_task(self.testRun)  
+        #     # await tg.create_task(*[asyncio.ensure_future(self.testRun(x)) for x in range(self.threads)])
+        #     await tg.create_task(self.multiProcQConsumer())
         await asyncio.gather(*[asyncio.ensure_future(self.testRun(x)) for x in range(self.threads)])
 
     def start(self):
@@ -62,8 +85,8 @@ class UVloopTester():
         print()
         # print(f'{self.timestamp()} Average TTC per Request: {self.totalTime / self.totalRequests}')
         print()
-        print(f'{self.count} requests timed out')
-        print(f'{self.totalRequests} requests done')
+        print(f'{self.count} requests timed out in {self.i}')
+        print(f'{self.totalRequests} requests done {self.i}')
         # if len(asyncio.Task.all_tasks()) > 0:
         #     for task in asyncio.Task.all_tasks(): task.cancel()
         #     try: loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
@@ -73,9 +96,19 @@ class UVloopTester():
 
 def run_uvloop_tester(i):
     print(f"Started {i}")
-    tester = UVloopTester()
+    if i == 2:
+        print(f"put msg to queue in {i} func")
+        mpQ.put_nowait("Hello")
+    elif i ==1:
+        if mpQ.qsize() > 0:
+            print(f"Got msg from queue {i} func {mpQ.get()}")
+    elif i == 3:
+        if mpQ.qsize() > 0:
+            print(f"Got msg from queue {i} func {mpQ.get()}")
+    tester = UVloopTester(i)
     tester.start()
 
 if __name__ == "__main__":
-    with Pool(10) as pool:
-        pool.map(run_uvloop_tester, range(2))
+    with Pool(3) as pool:
+        pool.map(run_uvloop_tester, range(1,4))
+
